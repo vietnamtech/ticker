@@ -1,0 +1,191 @@
+<!doctype html>
+<html>
+
+<head>
+    <script src="http://code.jquery.com/jquery.min.js"></script>
+    <style>
+        body {
+            background-color: silver;
+        }
+
+        canvas {
+            border: 1px solid red;
+        }
+    </style>
+
+</head>
+
+<body>
+    <canvas id="canvas" width=300 height=300></canvas><br>
+
+    <script>
+
+
+        // canvas related variables
+        var canvas = document.getElementById("canvas");
+        var ctx = canvas.getContext("2d");
+
+        // variables used in pixel manipulation
+        var canvases = [];
+        var imageData, data, imageData1, data1;
+        var defineNonTransparent = function (x, y) {
+            return (data1[(y * cw + x) * 4 + 3] > 0);
+        }
+
+        // size of sticker outline
+        var strokeWeight = 10;
+
+        var img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = start;
+        img.src = "500x500.png";
+
+        // utility function
+        // Defines a path on the canvas without stroking or filling that path
+        function defineGeomPath(context, points) {
+            context.beginPath();
+            context.moveTo(points[0][0], points[0][1]);
+            for (var i = 1; i < points.length; i++) {
+                context.lineTo(points[i][0], points[i][1]);
+            }
+            context.lineTo(points[0][0], points[0][1]);
+            context.closePath();
+        }
+
+        function start() {
+
+            canvas.width = cw = img.width + strokeWeight * 2;
+            canvas.height = ch = img.height + strokeWeight * 2;
+
+            // draw the image on the main canvas
+            ctx.drawImage(img, strokeWeight, strokeWeight);
+
+            const x = strokeWeight + 1, y = strokeWeight + 1;
+            for (let angle = 0; angle < 360; angle += 360 / 36) {
+                ctx.drawImage(
+                    img,
+                    strokeWeight * Math.sin((Math.PI * 2 * angle) / 360) + x,
+                    strokeWeight * Math.cos((Math.PI * 2 * angle) / 360) + y
+                );
+            }
+
+            ctx.globalCompositeOperation = 'source-out';
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // get contents of blurry bordered image
+            const imgData = ctx.getImageData(
+                0,
+                0,
+                ctx.canvas.width - 1,
+                ctx.canvas.height - 1
+            );
+
+            for (let i = imgData.data.length; i > 0; i -= 4) {
+                if (imgData.data[i] > 0) {
+                    imgData.data[i] = 255;
+                    imgData.data[i + 1] = 255;
+                    imgData.data[i + 2] = 0;
+                }
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+
+
+
+            // ctx.globalCompositeOperation = 'source-over';
+            // ctx.drawImage(img, strokeWeight, strokeWeight);
+
+            // ctx.putImageData(imgData, 0, 0);
+
+            // ctx.shadowColor = '#fff';
+            // ctx.shadowBlur = 50;
+            // ctx.shadowOffsetX = 0;
+            // ctx.shadowOffsetY = 0;
+            // ctx.drawImage(canvas, 0, 0);
+
+
+        }
+
+
+        ////////////////////////////
+        // Edge Detection
+        ///////////////////////////
+        (function () {
+            geom = {};
+            geom.contour = function (grid, start) {
+                var s = start || d3_geom_contourStart(grid), // starting point 
+                    c = [], // contour polygon 
+                    x = s[0], // current x position 
+                    y = s[1], // current y position 
+                    dx = 0, // next x direction 
+                    dy = 0, // next y direction 
+                    pdx = NaN, // previous x direction 
+                    pdy = NaN, // previous y direction 
+                    i = 0;
+
+                do {
+                    // determine marching squares index 
+                    i = 0;
+                    if (grid(x - 1, y - 1)) i += 1;
+                    if (grid(x, y - 1)) i += 2;
+                    if (grid(x - 1, y)) i += 4;
+                    if (grid(x, y)) i += 8;
+
+                    // determine next direction 
+                    if (i === 6) {
+                        dx = pdy === -1 ? -1 : 1;
+                        dy = 0;
+                    } else if (i === 9) {
+                        dx = 0;
+                        dy = pdx === 1 ? -1 : 1;
+                    } else {
+                        dx = d3_geom_contourDx[i];
+                        dy = d3_geom_contourDy[i];
+                    }
+
+                    // update contour polygon 
+                    if (dx != pdx && dy != pdy) {
+                        c.push([x, y]);
+                        pdx = dx;
+                        pdy = dy;
+                    }
+
+                    x += dx;
+                    y += dy;
+                } while (s[0] != x || s[1] != y);
+
+                return c;
+            };
+
+            // lookup tables for marching directions 
+            var d3_geom_contourDx = [1, 0, 1, 1, -1, 0, -1, 1, 0, 0, 0, 0, -1, 0, -1, NaN],
+                d3_geom_contourDy = [0, -1, 0, 0, 0, -1, 0, 0, 1, -1, 1, 1, 0, -1, 0, NaN];
+
+            function d3_geom_contourStart(grid) {
+                var x = 0,
+                    y = 0;
+
+                // search for a starting point; begin at origin 
+                // and proceed along outward-expanding diagonals 
+                while (true) {
+                    if (grid(x, y)) {
+                        return [x, y];
+                    }
+                    if (x === 0) {
+                        x = y + 1;
+                        y = 0;
+                    } else {
+                        x = x - 1;
+                        y = y + 1;
+                    }
+                }
+            }
+
+        })();
+
+    </script>
+
+</body>
+
+</html>
